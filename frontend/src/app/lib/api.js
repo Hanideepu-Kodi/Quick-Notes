@@ -27,7 +27,12 @@ export const auth = {
 
 // Notes (server model uses title/body/status)
 export const notesApi = {
-  list: (status) => j("GET", status ? `/notes?status=${encodeURIComponent(status)}` : "/notes"),
+  list: (status, userId) => {
+  const params = new URLSearchParams();
+  if (status) params.append("status", status);
+  if (userId) params.append("user_id", userId);
+  return j("GET", `/notes?${params.toString()}`);
+},
   create: (payload) => j("POST", "/notes", payload),
   update: (id, payload) => j("PATCH", `/notes/${id}`, payload),
   delete: (id) => j("DELETE", `/notes/${id}`),

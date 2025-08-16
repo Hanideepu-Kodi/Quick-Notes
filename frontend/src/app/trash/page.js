@@ -6,7 +6,12 @@ import { notesApi, auth } from "../lib/api";
 
 export default function TrashPage() {
   const [notes, setNotes] = useState([]);
-  useEffect(() => { (async () => { await auth.me(); setNotes(await notesApi.list("trash")); })(); }, []);
+  useEffect(() => {
+    (async () => {
+      const me = await auth.me();
+      setNotes(await notesApi.list("trash", me.id));
+    })();
+  }, []);
 
   const refresh = async () => setNotes(await notesApi.list("trash"));
   const recover = async (id) => { await notesApi.update(id, { status: "active" }); await refresh(); };
@@ -20,7 +25,7 @@ export default function TrashPage() {
           <h1 className="bg-gradient-to-br from-cyan-300 to-indigo-400 bg-clip-text text-3xl font-extrabold text-transparent">Trash</h1>
           <p className="mt-1 text-sm text-slate-400">Recover or permanently delete notes.</p>
         </header>
-        <NotesGrid notes={notes.map(n => ({ id:n.id, title:n.title, content:n.body }))} onRecover={recover} onDelete={del} />
+        <NotesGrid notes={notes.map(n => ({ id: n.id, title: n.title, content: n.body }))} onRecover={recover} onDelete={del} />
       </main>
     </div>
   );

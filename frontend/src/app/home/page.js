@@ -20,7 +20,7 @@ export default function HomePage() {
       try {
         const me = await auth.me();
         setUserId(me.id);
-        const data = await notesApi.list("active");
+        const data = await notesApi.list("active", me.id);
         setNotes(data);
       } catch {
         // If middleware didn't catch it (e.g., cookie expired mid-session),
@@ -35,7 +35,7 @@ export default function HomePage() {
   }, []);
 
   const refresh = async () => {
-    const data = await notesApi.list("active");
+    const data = await notesApi.list("active", userId);
     setNotes(data);
   };
 

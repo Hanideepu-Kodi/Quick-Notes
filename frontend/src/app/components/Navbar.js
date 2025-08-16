@@ -48,7 +48,6 @@ export default function Navbar() {
         </nav>
         <div className="mt-auto p-3 text-xs text-slate-400/80">
            <NavItem onClick={handleLogout} icon={LogOutIcon} label="Logout" />
-          <p className="leading-5">Local only • Stored in your browser</p>
         </div>
       </div>
     </aside>

@@ -2,10 +2,14 @@ import os
 from typing import Optional, Dict, Any, List
 
 import pymysql
-from fastapi import FastAPI, HTTPException, Query, Body
+from fastapi import FastAPI, HTTPException, Query, Body, Request, Response, Depends
 from dotenv import load_dotenv
 from passlib.hash import bcrypt
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI,  HTTPException
+from pydantic import BaseModel, EmailStr
+from datetime import datetime, timedelta, timezone
+import jwt
 
 load_dotenv()
 
@@ -41,6 +45,126 @@ def get_db_connection():
         cursorclass=pymysql.cursors.DictCursor,
         autocommit=False,
     )
+
+SECRET = os.environ.get("JWT_SECRET", "change-me")
+JWT_EXP_MIN = 60 * 24     # 24h
+COOKIE_NAME = "token"
+
+#--------AUTHENTICATION----------
+# --- User DB helpers -------------------------------------------------
+def get_user_by_email(email: str):
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, email, password_hash, created_at FROM users WHERE email=%s",
+                (email,)
+            )
+            return cur.fetchone()  # or None
+    finally:
+        conn.close()
+
+def insert_user(email: str, password_hash: str):
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO users (email, password_hash) VALUES (%s, %s)",
+                (email, password_hash)
+            )
+            user_id = cur.lastrowid
+            cur.execute("SELECT id, email, created_at FROM users WHERE id=%s", (user_id,))
+            row = cur.fetchone()
+        conn.commit()
+        return row
+    except pymysql.err.IntegrityError:
+        conn.rollback()
+        # Unique key violation on email
+        raise HTTPException(status_code=409, detail="Email already exists")
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+class AuthIn(BaseModel):
+    email: EmailStr
+    password: str
+
+def sign_jwt(sub: str):
+    payload = {"sub": sub, "exp": datetime.now(timezone.utc) + timedelta(minutes=JWT_EXP_MIN)}
+    return jwt.encode(payload, SECRET, algorithm="HS256")
+
+def set_auth_cookie(resp: Response, token: str):
+    # On localhost, SameSite='Lax' is OK. In production with cross-site, use SameSite=None and Secure=True.
+    resp.set_cookie(
+        key=COOKIE_NAME,
+        value=token,
+        httponly=True,
+        samesite="lax",
+        secure=False,     # True if HTTPS
+        max_age=60*60*24, # 1 day
+        path="/",
+    )
+
+#API to register
+@app.post("/auth/register")
+def register(body: AuthIn):
+    email = body.email.lower().strip()
+    if not body.password:
+        raise HTTPException(status_code=400, detail="Password required")
+
+    # Check if exists
+    if get_user_by_email(email):
+        raise HTTPException(status_code=409, detail="Email already exists")
+
+    # Hash with passlib
+    password_hash = bcrypt.hash(body.password)
+    # Insert user
+    _ = insert_user(email, password_hash)
+    return {"message": "Registered"}
+
+#API to login
+@app.post("/auth/login")
+def login(body: AuthIn, response: Response):
+    email = body.email.lower().strip()
+    user = get_user_by_email(email)
+    if not user:
+        # Keep your desired message/status
+        raise HTTPException(status_code=404, detail="Email not registered. Please register.")
+
+    if not bcrypt.verify(body.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    token = sign_jwt(email)
+    set_auth_cookie(response, token)
+    return {"message": "Logged in", "user": {"id": user["id"], "email": user["email"]}}
+
+#API to logout
+@app.post("/auth/logout")
+def logout(response: Response):
+    response.delete_cookie(COOKIE_NAME, path="/")
+    return {"message": "Logged out"}
+
+#API to get the current user
+@app.get("/auth/me")
+def me(request: Request):
+    token = request.cookies.get(COOKIE_NAME)
+    if not token:
+        raise HTTPException(status_code=401, detail="Unauthenticated")
+    try:
+        payload = jwt.decode(token, SECRET, algorithms=["HS256"])
+        email = payload["sub"]
+        user = get_user_by_email(email)
+        if not user:
+            raise HTTPException(status_code=401, detail="Unauthenticated")
+        return {"email": user["email"], "id": user["id"]}
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Session expired")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+# ---------------------------------------------------------------------
+
 
 # API to create an User
 @app.post("/users", status_code=201)

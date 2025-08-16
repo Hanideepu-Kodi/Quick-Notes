@@ -2,52 +2,25 @@
 import React, { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import NotesGrid from "../components/NotesGrid";
-
-const readAll = () => JSON.parse(localStorage.getItem("notes") || "[]");
-const writeAll = (arr) => localStorage.setItem("notes", JSON.stringify(arr));
+import { notesApi, auth } from "../lib/api";
 
 export default function PinnedPage() {
   const [notes, setNotes] = useState([]);
+  useEffect(() => { (async () => { await auth.me(); setNotes(await notesApi.list("pinned")); })(); }, []);
 
-  useEffect(() => {
-    const all = readAll();
-    setNotes(all.filter((n) => n.status === "pinned"));
-  }, []);
-
-  const refreshPinned = () => {
-    const all = readAll();
-    setNotes(all.filter((n) => n.status === "pinned"));
-  };
-
-  const unpinNote = (id) => {
-    const updated = readAll().map((n) => (n.id === id ? { ...n, status: "active" } : n));
-    writeAll(updated);
-    refreshPinned();
-  };
-
-  const moveToTrash = (id) => {
-    const updated = readAll().map((n) => (n.id === id ? { ...n, status: "trash" } : n));
-    writeAll(updated);
-    refreshPinned();
-  };
-
-  const editNote = (id, data) => {
-    const updated = readAll().map((n) => (n.id === id ? { ...n, ...data } : n));
-    writeAll(updated);
-    refreshPinned();
-  };
+  const refresh = async () => setNotes(await notesApi.list("pinned"));
+  const unpin = async (id) => { await notesApi.update(id, { status: "active" }); await refresh(); };
+  const trash = async (id) => { await notesApi.update(id, { status: "trash" }); await refresh(); };
+  const edit = async (id, data) => { await notesApi.update(id, { title: data.title, body: data.content }); await refresh(); };
 
   return (
     <div className="flex">
       <Navbar />
       <main className="flex-1 p-6">
         <header className="mb-6">
-          <h1 className="bg-gradient-to-br from-cyan-300 to-indigo-400 bg-clip-text text-3xl font-extrabold text-transparent">
-            Pinned Notes
-          </h1>
-          <p className="mt-1 text-sm text-slate-400">Notes you’ve pinned for quick access.</p>
+          <h1 className="bg-gradient-to-br from-cyan-300 to-indigo-400 bg-clip-text text-3xl font-extrabold text-transparent">Pinned Notes</h1>
         </header>
-        <NotesGrid notes={notes} onUnpin={unpinNote} onTrash={moveToTrash} onEdit={editNote} />
+        <NotesGrid notes={notes.map(n => ({ id:n.id, title:n.title, content:n.body }))} onUnpin={unpin} onTrash={trash} onEdit={edit} />
       </main>
     </div>
   );

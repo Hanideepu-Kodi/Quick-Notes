@@ -24,3 +24,15 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* globals.css
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="white" opacity="0.1"/></svg>'), auto;
+}
+
+/* Soft card border helper (optional) */
+/* .card-border { @apply border border-white/10 bg-white/5 backdrop-blur-md; } */

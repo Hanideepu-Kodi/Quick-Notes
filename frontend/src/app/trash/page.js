@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
@@ -35,10 +34,15 @@ export default function TrashPage() {
   return (
     <div className="flex">
       <Navbar />
-      <div className="flex-1 p-4">
-        <h1 className="text-2xl font-bold mb-4">Trash</h1>
+      <main className="flex-1 p-6">
+        <header className="mb-6">
+          <h1 className="bg-gradient-to-br from-cyan-300 to-indigo-400 bg-clip-text text-3xl font-extrabold text-transparent">
+            Trash
+          </h1>
+          <p className="mt-1 text-sm text-slate-400">Recover or permanently delete notes.</p>
+        </header>
         <NotesGrid notes={notes} onRecover={recoverNote} onDelete={deletePermanently} />
-      </div>
+      </main>
     </div>
   );
 }

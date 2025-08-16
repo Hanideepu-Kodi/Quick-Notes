@@ -1,35 +1,49 @@
 "use client";
-import React from "react";
 import Link from "next/link";
-import { FaHome, FaThumbtack, FaTrash, FaBars } from "react-icons/fa";
+import { usePathname } from "next/navigation";
+import { StickyNote, Pin, Trash2 } from "lucide-react";
 
-export default function Navbar({ expanded, toggle }) {
+const NavItem = ({ href, icon: Icon, label }) => {
+  const pathname = usePathname();
+  const active = pathname === href;
   return (
-    <div
-      className={`bg-white shadow-md h-screen p-4 transition-all duration-300 flex flex-col
-        ${expanded ? "w-48" : "w-16"}`}
+    <Link
+      href={href}
+      className={`group flex items-center gap-3 rounded-xl px-3 py-2 transition-all outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 ${
+        active
+          ? "bg-white/10 text-white shadow-sm"
+          : "text-slate-300 hover:text-white hover:bg-white/5"
+      }`}
+      title={label}
     >
-      <button
-        className="text-gray-700 text-xl mb-6 focus:outline-none"
-        onClick={toggle}
-      >
-        <FaBars />
-      </button>
+      <Icon className="h-5 w-5 transition-transform group-hover:-translate-y-0.5" />
+      <span className="text-sm font-medium">{label}</span>
+    </Link>
+  );
+};
 
-      <nav className="flex flex-col gap-4">
-        <Link href="/" className="flex items-center gap-3 text-gray-700 hover:text-blue-500">
-          <FaHome />
-          {expanded && <span>Home</span>}
-        </Link>
-        <Link href="/pinned" className="flex items-center gap-3 text-gray-700 hover:text-blue-500">
-          <FaThumbtack />
-          {expanded && <span>Pinned</span>}
-        </Link>
-        <Link href="/trash" className="flex items-center gap-3 text-gray-700 hover:text-blue-500">
-          <FaTrash />
-          {expanded && <span>Trash</span>}
-        </Link>
-      </nav>
-    </div>
+export default function Navbar() {
+  return (
+    <aside className="sticky top-0 h-dvh w-[250px] shrink-0 border-r border-white/10 bg-white/5 backdrop-blur-md">
+      <div className="flex h-full flex-col">
+        {/* Brand */}
+        <div className="flex items-center gap-2 p-4">
+          <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-cyan-400 to-indigo-500" />
+          <div>
+            <p className="text-sm text-slate-300">Quick</p>
+            <p className="text-base font-semibold">Notes</p>
+          </div>
+        </div>
+        {/* Nav */}
+        <nav className="flex flex-col gap-1 p-2">
+          <NavItem href="/home" icon={StickyNote} label="All Notes" />
+          <NavItem href="/pinned" icon={Pin} label="Pinned" />
+          <NavItem href="/trash" icon={Trash2} label="Trash" />
+        </nav>
+        <div className="mt-auto p-3 text-xs text-slate-400/80">
+          <p className="leading-5">Local only • Stored in your browser</p>
+        </div>
+      </div>
+    </aside>
   );
 }

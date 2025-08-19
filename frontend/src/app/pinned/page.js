@@ -6,14 +6,16 @@ import { notesApi, auth } from "../lib/api";
 
 export default function PinnedPage() {
   const [notes, setNotes] = useState([]);
+  const [userId, setUserId] = useState(null);
   useEffect(() => {
     (async () => {
       const me = await auth.me();
+      setUserId(me.id);
       setNotes(await notesApi.list("pinned", me.id));
     })();
   }, []);
 
-  const refresh = async () => setNotes(await notesApi.list("pinned", me.id));
+  const refresh = async () => setNotes(await notesApi.list("pinned", userId));
   const unpin = async (id) => { await notesApi.update(id, { status: "active" }); await refresh(); };
   const trash = async (id) => { await notesApi.update(id, { status: "trash" }); await refresh(); };
   const edit = async (id, data) => { await notesApi.update(id, { title: data.title, body: data.content }); await refresh(); };

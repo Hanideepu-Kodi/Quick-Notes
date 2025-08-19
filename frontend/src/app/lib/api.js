@@ -36,4 +36,5 @@ export const notesApi = {
   create: (payload) => j("POST", "/notes", payload),
   update: (id, payload) => j("PATCH", `/notes/${id}`, payload),
   delete: (id) => j("DELETE", `/notes/${id}`),
+  deleteForever: (id) => j("DELETE", `/notes/${id}?permanent=true`),
 };

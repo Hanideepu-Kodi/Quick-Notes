@@ -224,6 +224,8 @@ def create_note(payload: Dict[str, Any] = Body(
     user_id = (payload or {}).get("user_id")
     title = (payload or {}).get("title")
     body = (payload or {}).get("body", "")
+    status = (payload or {}).get("status", "active")
+
 
     if not user_id or not title:
         raise HTTPException(status_code=400, detail="user_id and title are required")
@@ -237,13 +239,13 @@ def create_note(payload: Dict[str, Any] = Body(
                 raise HTTPException(status_code=404, detail="User not found")
 
             cur.execute(
-                "INSERT INTO notes (user_id, title, body) VALUES (%s, %s, %s)",
-                (user_id, title, body),
+                "INSERT INTO notes (user_id, title, body, status) VALUES (%s, %s, %s, %s)",
+                (user_id, title, body, status),
             )
             note_id = cur.lastrowid
 
             cur.execute(
-                "SELECT id, user_id, title, body, created_at, updated_at FROM notes WHERE id=%s",
+                "SELECT id, user_id, title, body, status, created_at, updated_at FROM notes WHERE id=%s",
                 (note_id,),
             )
             row = cur.fetchone()
@@ -259,21 +261,28 @@ def create_note(payload: Dict[str, Any] = Body(
 
 #API to list all notes/ all notes belonging to a specific user
 @app.get("/notes")
-def list_notes(user_id: Optional[int] = Query(default=None)) -> List[Dict[str, Any]]:
+def list_notes(user_id: Optional[int] = Query(default=None), status: Optional[str] = Query(default=None)) -> List[Dict[str, Any]]:
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            if user_id is None:
-                cur.execute(
-                    "SELECT id, user_id, title, body, created_at, updated_at "
-                    "FROM notes ORDER BY created_at DESC"
-                )
-            else:
-                cur.execute(
-                    "SELECT id, user_id, title, body, created_at, updated_at "
-                    "FROM notes WHERE user_id=%s ORDER BY created_at DESC",
-                    (user_id,),
-                )
+            sql = "SELECT id, user_id, title, body, status, created_at, updated_at FROM notes"
+            params = []
+            conditions = []
+
+            if user_id is not None:
+                conditions.append("user_id=%s")
+                params.append(user_id)
+            
+            if status is not None:
+                conditions.append("status=%s")
+                params.append(status)
+
+            if conditions:
+                sql += " WHERE " + " AND ".join(conditions)
+            
+            sql += " ORDER BY created_at DESC"
+            
+            cur.execute(sql, params)
             rows = cur.fetchall()
         return rows
     except Exception as e:
@@ -288,7 +297,7 @@ def get_note(note_id: int):
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, user_id, title, body, created_at, updated_at FROM notes WHERE id=%s",
+                "SELECT id, user_id, title, body, status, created_at, updated_at FROM notes WHERE id=%s",
                 (note_id)
             )
             row = cur.fetchone()
@@ -310,8 +319,9 @@ def update_note(
 ):
     title = (payload or {}).get("title")
     body = (payload or {}).get("body")
+    status = (payload or {}).get("status")
 
-    if title is None and body is None:
+    if title is None and body is None and status is None:
         raise HTTPException(status_code=400, detail="nothing to update")
 
     conn = get_db_connection()
@@ -325,6 +335,9 @@ def update_note(
             if body is not None:
                 sets.append("body=%s")
                 params.append(body)
+            if status is not None:
+                sets.append("status=%s")
+                params.append(status)
 
             params.append(note_id)
 
@@ -335,7 +348,7 @@ def update_note(
                 raise HTTPException(status_code=404, detail="Note not found")
 
             cur.execute(
-                "SELECT id, user_id, title, body, created_at, updated_at FROM notes WHERE id=%s",
+                "SELECT id, user_id, title, body, status, created_at, updated_at FROM notes WHERE id=%s",
                 (note_id,),
             )
             row = cur.fetchone()
@@ -351,11 +364,15 @@ def update_note(
 
 #API to delete a note based on it's ID
 @app.delete("/notes/{note_id}", status_code=204)
-def delete_note(note_id: int):
+def delete_note(note_id: int, permanent: bool = Query(default=False)):
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM notes WHERE id=%s", (note_id,))
+            if permanent:
+                cur.execute("DELETE FROM notes WHERE id=%s", (note_id,))
+            else:
+                cur.execute("UPDATE notes SET status='trash' WHERE id=%s", (note_id,))
+            
             if cur.rowcount == 0:
                 raise HTTPException(status_code=404, detail="Note not found")
         conn.commit()

@@ -13,7 +13,7 @@ export default function NoteCard({ note, onPin, onUnpin, onTrash, onDelete, onRe
   };
 
   return (
-    <div className="group relative rounded-2xl border border-white/10 bg-white/5 p-4 shadow-sm transition-all hover:border-white/20 hover:bg-white/7 backdrop-blur-md">
+    <div className={`${!editing?'group':''} relative rounded-2xl border border-white/10 bg-white/5 p-4 shadow-sm transition-all hover:border-white/20 hover:bg-white/7 backdrop-blur-md`}>
       {/* Hover toolbar */}
       <div className="pointer-events-none absolute right-2 top-2 flex translate-y-1 gap-1 opacity-0 transition-all group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
         {onPin && (

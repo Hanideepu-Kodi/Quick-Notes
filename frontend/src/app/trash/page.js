@@ -6,16 +6,18 @@ import { notesApi, auth } from "../lib/api";
 
 export default function TrashPage() {
   const [notes, setNotes] = useState([]);
+  const [userId, setUserId] = useState(null);
   useEffect(() => {
     (async () => {
       const me = await auth.me();
+      setUserId(me.id);
       setNotes(await notesApi.list("trash", me.id));
     })();
   }, []);
 
-  const refresh = async () => setNotes(await notesApi.list("trash"));
+  const refresh = async () => setNotes(await notesApi.list("trash", userId));
   const recover = async (id) => { await notesApi.update(id, { status: "active" }); await refresh(); };
-  const del = async (id) => { await notesApi.delete(id); await refresh(); };
+  const del = async (id) => { await notesApi.deleteForever(id); await refresh(); };
 
   return (
     <div className="flex">
